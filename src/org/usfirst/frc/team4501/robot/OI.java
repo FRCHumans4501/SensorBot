@@ -43,17 +43,30 @@ public class OI {
     // until it is finished as determined by it's isFinished method.
     // button.whenReleased(new ExampleCommand());}
 	Joystick stick = new Joystick(0);
+	Joystick stick2 = new Joystick(1);
 	
 	JoystickButton button1 = new JoystickButton(stick,3);
 	JoystickButton button2 = new JoystickButton(stick, 2);
 	
 	
 	public OI(){
-	
 	button1.whileHeld(new openClaw());
 	button2.whileHeld(new closeClaw());
-	
-	
 }
+	public double getXLeft() {
+		return stick.getRawAxis(0);
+	}
+	
+	public double getYLeft() {
+		return -stick.getRawAxis(1);
+	}
+	
+	public double getXRight() {
+		return stick2.getRawAxis(0);
+	}
+	
+	public double getYRight() {
+		return -stick2.getRawAxis(1);
+	}
 
 }
