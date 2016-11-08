@@ -41,7 +41,7 @@ public class Robot extends IterativeRobot {
     
     public void robotInit() {
     	oi = new OI();
-       
+    	
     }
 
     public void autonomousInit() {
@@ -68,6 +68,7 @@ public class Robot extends IterativeRobot {
      */
     public void teleopPeriodic() {
     	Scheduler.getInstance().run();
+    	drive.getData();
     }
     
     /**
