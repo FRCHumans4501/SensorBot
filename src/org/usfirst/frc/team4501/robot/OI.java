@@ -2,6 +2,7 @@ package org.usfirst.frc.team4501.robot;
 
 
 
+import org.usfirst.frc.team4501.robot.commands.TurnWithGyro;
 import org.usfirst.frc.team4501.robot.commands.closeClaw;
 import org.usfirst.frc.team4501.robot.commands.openClaw;
 
@@ -45,13 +46,17 @@ public class OI {
 	Joystick stick = new Joystick(0);
 	Joystick stick2 = new Joystick(1);
 	
-	JoystickButton button1 = new JoystickButton(stick,3);
+	JoystickButton button1 = new JoystickButton(stick, 1);
 	JoystickButton button2 = new JoystickButton(stick, 2);
+	JoystickButton button3 = new JoystickButton(stick, 3);
+	JoystickButton button4 = new JoystickButton(stick, 4);
 	
 	
 	public OI(){
-	button1.whileHeld(new openClaw());
-	button2.whileHeld(new closeClaw());
+		button1.whenPressed(new TurnWithGyro(0));
+		button2.whenPressed(new TurnWithGyro(90));
+		button3.whenPressed(new TurnWithGyro(180));
+		button4.whenPressed(new TurnWithGyro(360));
 }
 	public double getXLeft() {
 		return stick.getRawAxis(0);
