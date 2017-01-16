@@ -35,8 +35,8 @@ public class DriveTrain extends Subsystem {
 		driveShit = new RobotDrive(talon1, talon2);
 	}
 	
-	public void move(double xAxis, double yAxis){
-			driveShit.tankDrive(xAxis, yAxis);
+	public void move(double leftSpin, double rightSpin){
+			driveShit.tankDrive(leftSpin, rightSpin);
 	}
 	
 	public void autoMove(){

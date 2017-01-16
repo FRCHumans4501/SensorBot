@@ -64,7 +64,7 @@ public class OI {
 	public double getXRight() {
 		return stick2.getRawAxis(0);
 	}
-	
+	                 
 	public double getYRight() {
 		return -stick2.getRawAxis(1);
 	}

@@ -8,12 +8,15 @@
 package org.usfirst.frc.team4501.robot;
 
 
+import org.usfirst.frc.team4501.robot.commands.TurnToCenter;
 import org.usfirst.frc.team4501.robot.subsystems.DriveTrain;
 
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.networktables.NetworkTable;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 
 
@@ -26,12 +29,15 @@ import edu.wpi.first.wpilibj.livewindow.LiveWindow;
  * directory.
  */
 public class Robot extends IterativeRobot {
-	
 	public static OI oi;
 	
     Command autonomousCommand;
     public static final DriveTrain drive = new DriveTrain();
-
+    public NetworkTable netTable;
+    public double centerY;
+    public double centerX;
+    public double[] defaultValues = new double[4];
+    public static Robot instance;
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
@@ -40,13 +46,15 @@ public class Robot extends IterativeRobot {
      */
     
     public void robotInit() {
+    	instance = this;
     	oi = new OI();
-       
+    	netTable = NetworkTable.getTable("GRIP/myContoursReport");
     }
 
     public void autonomousInit() {
-        // schedule the autonomous command (example)
+    	autonomousCommand = new TurnToCenter();
         autonomousCommand.start();
+    	System.out.println("Auto Init");
     }
 
     /**
@@ -68,18 +76,24 @@ public class Robot extends IterativeRobot {
      */
     public void teleopPeriodic() {
     	Scheduler.getInstance().run();
+    	
     }
     
     /**
      * This function is called periodically during test mode
      */
     public void testPeriodic() {
-        LiveWindow.run();
+    	//SmartDashboard.putData("Center Y[0]", );
+    	LiveWindow.run();
     }
     
-  
-     
-    
-
+    public void getCenters() {
+       	double[] tableX = netTable.getNumberArray("centerX", defaultValues);
+    	double[] tableY = netTable.getNumberArray("centerY", defaultValues);
+    	if (tableX.length > 0 && tableY.length > 0){
+    	centerX = tableX[0];
+    	centerY = tableY[0];
+    	}
+    }
     
 }
