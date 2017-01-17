@@ -18,7 +18,6 @@ public class AutoMove extends CommandGroup {
     	
     	addSequential(new autoMover());
     	addSequential(new WaitCommand(1));
-    	addSequential(new autoOpen());
     }
 
     
