@@ -1,17 +1,11 @@
 package org.usfirst.frc.team4501.robot.subsystems;
 
-import org.usfirst.frc.team4501.robot.OI;
-import org.usfirst.frc.team4501.robot.Robot;
 import org.usfirst.frc.team4501.robot.RobotMap;
 import org.usfirst.frc.team4501.robot.commands.Drive;
 
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
-import edu.wpi.first.wpilibj.SPI.Port;
 import edu.wpi.first.wpilibj.Talon;
 import edu.wpi.first.wpilibj.command.Subsystem;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  *
@@ -24,8 +18,7 @@ public class DriveTrain extends Subsystem {
 
 	Talon talon1;
 	Talon talon2;
-	Talon talon3;
-
+	
 	RobotDrive driveShit;
 
 	public DriveTrain() {
