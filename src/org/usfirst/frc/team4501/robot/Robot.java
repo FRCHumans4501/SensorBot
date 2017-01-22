@@ -8,13 +8,14 @@
 package org.usfirst.frc.team4501.robot;
 
 
-import org.usfirst.frc.team4501.robot.commands.TurnToCenter;
 import org.usfirst.frc.team4501.robot.subsystems.DriveTrain;
 
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.command.Command;
+import edu.wpi.first.wpilibj.command.PIDSubsystem;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.livewindow.LiveWindowSendable;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
@@ -29,15 +30,62 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
  * directory.
  */
 public class Robot extends IterativeRobot {
-	public static OI oi;
+	class VisionSystem extends PIDSubsystem {
+		public VisionSystem(double p, double i, double d) {
+			super(p, i, d);
+			LiveWindow.addActuator("VisionSystem", "pid", getPIDController());
+			
+		}
+
+		@Override
+		protected void initDefaultCommand() {
+		}
+		
+		@Override
+		protected void usePIDOutput(double output) {
+			if (isAutonomous() || isTest()) {
+				//drive.move(output, -output);
+				System.out.printf("drive = %.1f, %.1f\n", output, -output);
+			}
+		}
+		
+		@Override
+		protected double returnPIDInput() {			
+			//Calculate the distance between the center of the screen and the center of the target
+			if (!isAutonomous() && !isTest()){
+				return 0;
+			}
+			
+			getCenters();
+			double deltaX = centerX - cameraCenterX;
+			deltaX /= cameraWidth/2;
+			return deltaX;
+		}
+	}
 	
-    Command autonomousCommand;
+	
+	public static double Kp, Ki, Kd;
+	public static double cameraWidth = 320;
+	public static double cameraHeight = 240;
+	public static double cameraCenterX = cameraWidth/2.0;
+	public static double cameraCenterY = cameraHeight/2.0;
+	
+	
+	public static OI oi;
+    public static Robot instance;
     public static final DriveTrain drive = new DriveTrain();
-    public NetworkTable netTable;
+    
+    
+    VisionSystem visionSystem;
+    
+    Command autonomousCommand;
+    
+
     public double centerY;
     public double centerX;
     public double[] defaultValues = new double[4];
-    public static Robot instance;
+
+    public NetworkTable netTable;
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
@@ -49,10 +97,10 @@ public class Robot extends IterativeRobot {
     	instance = this;
     	oi = new OI();
     	netTable = NetworkTable.getTable("GRIP/myContoursReport");
+    	visionSystem = new VisionSystem(Kp, Ki, Kd);
     }
 
     public void autonomousInit() {
-    	autonomousCommand = new TurnToCenter();
         autonomousCommand.start();
     	System.out.println("Auto Init");
     }
@@ -95,5 +143,4 @@ public class Robot extends IterativeRobot {
     	centerY = tableY[0];
     	}
     }
-    
 }
