@@ -2,9 +2,6 @@ package org.usfirst.frc.team4501.robot;
 
 
 
-import org.usfirst.frc.team4501.robot.commands.closeClaw;
-import org.usfirst.frc.team4501.robot.commands.openClaw;
-
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.buttons.Button;
@@ -50,8 +47,6 @@ public class OI {
 	
 	
 	public OI(){
-	button1.whileHeld(new openClaw());
-	button2.whileHeld(new closeClaw());
 }
 	public double getXLeft() {
 		return stick.getRawAxis(0);

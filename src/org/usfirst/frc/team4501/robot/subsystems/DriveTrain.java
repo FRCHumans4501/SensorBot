@@ -22,7 +22,7 @@ public class DriveTrain extends Subsystem {
 	
 	Talon talon1;
 	Talon talon2;
-	Talon talon3;
+	
 	
 	RobotDrive driveShit;
 	
@@ -30,7 +30,6 @@ public class DriveTrain extends Subsystem {
 	public DriveTrain(){
 		talon1 = new Talon(RobotMap.TALON);
 		talon2 = new Talon(RobotMap.TALON2);
-		talon3 = new Talon(RobotMap.TALON3);
 				
 		
 		driveShit = new RobotDrive(talon1, talon2);
@@ -43,20 +42,6 @@ public class DriveTrain extends Subsystem {
 	public void autoMove(){
 		talon1.set(1);
 		talon2.set(1);
-	}
-	
-	public void autoOpen(){
-		talon3.set(1);
-	}
-	
-	public void openClaw(double talon3){
-		
-		this.talon3.set(talon3);
-		
-	}
-	
-	public void closeClaw(double talon3){
-		this.talon3.set(talon3);
 	}
 
     public void initDefaultCommand() {
