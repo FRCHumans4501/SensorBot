@@ -3,8 +3,6 @@ package org.usfirst.frc.team4501.robot;
 
 
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.GenericHID.Hand;
-import edu.wpi.first.wpilibj.buttons.Button;
 import edu.wpi.first.wpilibj.buttons.JoystickButton;
 
 
@@ -47,7 +45,8 @@ public class OI {
 	
 	
 	public OI(){
-}
+
+	}
 	public double getXLeft() {
 		return stick.getRawAxis(0);
 	}

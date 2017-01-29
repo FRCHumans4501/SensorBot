@@ -14,9 +14,7 @@ import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.command.PIDSubsystem;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
-import edu.wpi.first.wpilibj.livewindow.LiveWindowSendable;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -28,9 +26,10 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends IterativeRobot {
 	class VisionSystem extends PIDSubsystem {
 		public VisionSystem(double p, double i, double d) {
-			super(p, i, d);
-			//LiveWindow.addActuator("VisionSystem", "pid", this.getPIDController());
-			System.out.println("vision init");
+			super("VisionSystem", p, i, d);
+			getPIDController().setContinuous(false);
+			LiveWindow.addActuator("VisionSystem", "pid", getPIDController());
+			System.out.println("vision init :" + getSmartDashboardType());
 		}
 
 		@Override
@@ -39,8 +38,8 @@ public class Robot extends IterativeRobot {
 
 		@Override
 		protected void usePIDOutput(double output) {
-			if (isAutonomous() || isTest()) {
-				drive.move(output, -output);
+			if (isEnabled() && (isAutonomous() || isTest())) {
+				// drive.move(output, -output);
 				System.out.printf("drive = %.1f, %.1f\n", output, -output);
 			}
 		}
@@ -129,6 +128,7 @@ public class Robot extends IterativeRobot {
 	 */
 	public void testPeriodic() {
 		// SmartDashboard.putData("Center Y[0]", );
+		visionSystem.enable();
 		LiveWindow.run();
 	}
 
