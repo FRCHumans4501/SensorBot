@@ -17,7 +17,6 @@ import edu.wpi.first.wpilibj.command.PIDSubsystem;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -27,6 +26,11 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
  * directory.
  */
 public class Robot extends IterativeRobot {
+	enum VisionMode {
+		ROTATE, MOVE, DONE
+	}
+
+	private VisionMode visionMode = VisionMode.ROTATE;
 
 	// SANDY THE SENSOR BOT HAS MY CODE NOT MADE FOR IT ON THE RIO. YOU NEED TO
 	// REUPLOAD THIS SENSOR BOT CODE ONTO IT SORRY SORRY SORRY SORRY SORRY SORRY
@@ -53,11 +57,17 @@ public class Robot extends IterativeRobot {
 		}
 	}
 
-	class VisionSteering extends PIDSubsystem {
-		public VisionSteering(double p, double i, double d) {
-			super("VisionSteering", p, i, d);
+	class VisionRotate extends PIDSubsystem {
+		public VisionRotate(double p, double i, double d) {
+			super("VisionRotate", p, i, d);
 			getPIDController().setContinuous(false);
-			LiveWindow.addActuator("VisionSteering", "pid", getPIDController());
+			setSetpoint(cameraCenterX);
+			LiveWindow.addActuator("VisionRotate", "pid", getPIDController());
+		}
+
+		@Override
+		public void enable() {
+			super.enable();
 		}
 
 		@Override
@@ -65,45 +75,49 @@ public class Robot extends IterativeRobot {
 		}
 
 		@Override
-		protected void usePIDOutput(double steeringOutput) {
+		protected double returnPIDInput() {
+			rotateAvgError = getPIDController().getAvgError();
 
-			if (isEnabled() && (isAutonomous() || isTest())) {
-				System.out.printf("%.2f Steering = %.1f, Drive = %.1f, Width = %.1f, Goal = %.1f\n",
-						System.currentTimeMillis() / 1000., steeringOutput, pidDriveOutput, centerWidth, centerX);
-				steeringOutput = Math.min(steeringOutput, 0.7);
-				steeringOutput = Math.max(steeringOutput, -0.7);
-				drive.arcadeDrive(pidDriveOutput, 0);//-steeringOutput);
-				
-				/*
-				 * alternating between forward and rotating if ((period & 1) ==
-				 * 0) { drive.tankDrive(pidDriveOutput, steeringOutput); }
-				 */
+			// Calculate the distance between the center of the screen and the
+			// center of the target
+			targetX = getSetpoint();
+			if (isAutonomous() || isTest()) {
+				targetX = centerX;
 			}
+			return targetX;
 		}
 
 		@Override
-		protected double returnPIDInput() {
-			// Calculate the distance between the center of the screen and the
-			// center of the target
-			if (!isAutonomous() && !isTest()) {
-				return 0;
+		protected void usePIDOutput(double output) {
+			if (visionMode != VisionMode.ROTATE) {
+				pidRotateOutput = 0;
+				return;
 			}
-			double deltaX = centerX - cameraCenterX;
-			deltaX /= cameraWidth / 2;
-			return deltaX;
+
+			if (rotateAvgError < maxRotateError) {
+				visionMode = VisionMode.MOVE;
+				pidRotateOutput = 0;
+				return;
+			}
+
+			if (isEnabled() && (isAutonomous() || isTest())) {
+				pidRotateOutput = output;
+				if (pidRotateOutput >= 0.7) {
+					pidRotateOutput = 0.7;
+				}
+				if (pidRotateOutput <= -0.7) {
+					pidRotateOutput = -0.7;
+				}
+			}
 		}
 	}
 
-	class VisionDrive extends PIDSubsystem {
-		
-		boolean reachedTargetWidth = false;
-		
-		
-		public VisionDrive(double p, double i, double d) {
-			super("VisionDrive", p, i, d);
-			this.setSetpoint(visionDriveTargetWidth);
+	class VisionMove extends PIDSubsystem {
+		public VisionMove(double p, double i, double d) {
+			super("VisionMove", p, i, d);
+			this.setSetpoint(visionMoveTargetWidth);
 			getPIDController().setContinuous(false);
-			LiveWindow.addActuator("VisionDrive", "pid", getPIDController());
+			LiveWindow.addActuator("VisionMove", "pid", getPIDController());
 		}
 
 		@Override
@@ -111,65 +125,54 @@ public class Robot extends IterativeRobot {
 			if (!isAutonomous() && !isTest()) {
 				return 0;
 			}
-			if (centerWidth > visionDriveTargetWidth) {
-				reachedTargetWidth = true;
+			if (centerWidth > visionMoveTargetWidth) {
+				visionMode = VisionMode.DONE;
+			} else if (rotateAvgError > 60 && centerWidth < visionMoveTargetWidth * .75) {
+				visionMode = VisionMode.ROTATE;
 			}
-			
 			return centerWidth;
 		}
 
 		@Override
 		protected void usePIDOutput(double output) {
-			// TODO Auto-generated method stub
-			
-			if (reachedTargetWidth) {
-				pidDriveOutput = 0;
+			pidMoveOutput = 0;
+			if (visionMode != VisionMode.MOVE) {
 				return;
 			}
-			
-			pidDriveOutput = output;
-			
-			if (pidDriveOutput >= 0.8) {
-				pidDriveOutput = 0.8;
+			pidMoveOutput = output;
+			if (pidMoveOutput >= 0.7) {
+				pidMoveOutput = 0.7;
 			}
-			
-			if (pidDriveOutput <= 0) {
-				pidDriveOutput = 0;
+			if (pidMoveOutput <= 0) {
+				pidMoveOutput = 0;
 			}
-			// alternating between forward and rotation
-			/*
-			 * if ((period & 1) == 1) { drive.tankDrive(output, output); }
-			 */
-
 		}
 
 		@Override
 		protected void initDefaultCommand() {
-			// TODO Auto-generated method stub
-
 		}
 
 		@Override
 		public void disable() {
-			// TODO Auto-generated method stub
 			super.disable();
-			pidDriveOutput = 0;
+			pidMoveOutput = 0;
 		}
 
 		@Override
 		public void enable() {
-			// TODO Auto-generated method stub
 			super.enable();
+			visionMode = VisionMode.ROTATE;
 		}
 	}
 
-	public static double steeringKp = 1.4;
-	public static double steeringKi = .06;
-	public static double steeringKd = 1.0;
-	public static double driveKp = .03;
-	public static double driveKi = 0;
-	public static double driveKd = .037;
-	public static double visionDriveTargetWidth = 90;
+	public static double rotateKp = 0.011;
+	public static double rotateKi = 1.8E-4;
+	public static double rotateKd = .007;
+	public static double moveKp = .03;
+	public static double moveKi = 0;
+	public static double moveKd = .037;
+	public static double visionMoveTargetWidth = 120;
+	public static double maxRotateError = 15;
 	public static double cameraWidth = 320;
 	public static double cameraHeight = 240;
 	public static double cameraCenterX = cameraWidth / 2.0;
@@ -179,14 +182,18 @@ public class Robot extends IterativeRobot {
 	public static Robot instance;
 	public static final DriveTrain drive = new DriveTrain();
 
-	VisionSteering visionSteering;
-	VisionDrive visionDrive;
+	VisionRotate visionSteering;
+	VisionMove visionDrive;
 	Command autonomousCommand;
 
 	public double centerY;
 	public double centerX;
 	public double centerWidth;
-	public double pidDriveOutput;
+
+	private double targetX;
+	private double rotateAvgError;
+	public double pidMoveOutput;
+	public double pidRotateOutput;
 
 	int period;
 
@@ -205,8 +212,8 @@ public class Robot extends IterativeRobot {
 		instance = this;
 		oi = new OI();
 		netTable = NetworkTable.getTable("GRIP/myContoursReport");
-		visionSteering = new VisionSteering(steeringKp, steeringKi, steeringKd);
-		visionDrive = new VisionDrive(driveKp, driveKi, driveKd);
+		visionSteering = new VisionRotate(rotateKp, rotateKi, rotateKd);
+		visionDrive = new VisionMove(moveKp, moveKi, moveKd);
 	}
 
 	public void autonomousInit() {
@@ -248,11 +255,16 @@ public class Robot extends IterativeRobot {
 	 * This function is called periodically during test mode
 	 */
 	public void testPeriodic() {
-		// SmartDashboard.putData("Center Y[0]", );
-		// visionSystem.enable();
 		LiveWindow.run();
 		getCenters();
 		++period;
+
+		if (visionMode != VisionMode.DONE) {
+			System.out.printf("%.2f Mode=%s Rotate=%.1f Move=%.1f targetX=%.1f Width=%.1f\n",
+					System.currentTimeMillis() / 1000., visionMode, pidRotateOutput, pidMoveOutput, targetX,
+					centerWidth);
+			drive.arcadeDrive(pidMoveOutput, -pidRotateOutput);
+		}
 	}
 
 	public boolean getCenters() {
@@ -260,7 +272,7 @@ public class Robot extends IterativeRobot {
 		double[] tableY = netTable.getNumberArray("centerY", defaultValues);
 		double[] tableWidth = netTable.getNumberArray("width", defaultValues);
 		int count = Math.min(tableWidth.length, Math.min(tableX.length, tableY.length));
-		
+
 		if (count == 0) {
 			return false;
 		}
@@ -271,23 +283,18 @@ public class Robot extends IterativeRobot {
 			countours[i] = new Kontours(area, tableWidth[i], tableX[i], tableY[i]);
 		}
 
-		// TODO: Check to see that the two largest areas are aprox. equal
+		// TODO: Check to see that the two largest areas are approx. equal
 		Arrays.sort(countours);
 		int targetIndex = 0;
 		if (countours.length > 1) {
 			if (countours[0].x < countours[1].x) {
-					targetIndex = 1;
+				targetIndex = 1;
 			}
 		}
-		
+
 		centerX = countours[targetIndex].x;
 		centerWidth = countours[targetIndex].width;
-		
+
 		return true;
 	}
 }
-
-
-
-
-
