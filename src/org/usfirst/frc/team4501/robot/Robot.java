@@ -27,10 +27,10 @@ import edu.wpi.first.wpilibj.networktables.NetworkTable;
  */
 public class Robot extends IterativeRobot {
 	enum VisionMode {
-		ROTATE, MOVE, DONE
+		ROTATE, MOVE, DONE, DISABLED;
 	}
 
-	private VisionMode visionMode = VisionMode.ROTATE;
+	private VisionMode visionMode = VisionMode.DISABLED;
 
 	// SANDY THE SENSOR BOT HAS MY CODE NOT MADE FOR IT ON THE RIO. YOU NEED TO
 	// REUPLOAD THIS SENSOR BOT CODE ONTO IT SORRY SORRY SORRY SORRY SORRY SORRY
@@ -61,6 +61,7 @@ public class Robot extends IterativeRobot {
 		public VisionRotate(double p, double i, double d) {
 			super("VisionRotate", p, i, d);
 			getPIDController().setContinuous(false);
+			getPIDController().setOutputRange(-.7, .7);
 			setSetpoint(cameraCenterX);
 			LiveWindow.addActuator("VisionRotate", "pid", getPIDController());
 		}
@@ -68,6 +69,7 @@ public class Robot extends IterativeRobot {
 		@Override
 		public void enable() {
 			super.enable();
+			targetX = 0;
 		}
 
 		@Override
@@ -80,7 +82,6 @@ public class Robot extends IterativeRobot {
 
 			// Calculate the distance between the center of the screen and the
 			// center of the target
-			targetX = getSetpoint();
 			if (isAutonomous() || isTest()) {
 				targetX = centerX;
 			}
@@ -89,27 +90,24 @@ public class Robot extends IterativeRobot {
 
 		@Override
 		protected void usePIDOutput(double output) {
-			if (visionMode != VisionMode.ROTATE) {
+			switch (visionMode) {
+
+			case ROTATE:
+				if (period > 10 && Math.abs(rotateAvgError) < maxRotateError) {
+					visionMode = VisionMode.MOVE;
+					pidRotateOutput = 0;
+				} else {
+					pidRotateOutput = output;
+				}
+				break;
+
+			default:
 				pidRotateOutput = 0;
-				return;
+				break;
 			}
 
-			if (rotateAvgError < maxRotateError) {
-				visionMode = VisionMode.MOVE;
-				pidRotateOutput = 0;
-				return;
-			}
-
-			if (isEnabled() && (isAutonomous() || isTest())) {
-				pidRotateOutput = output;
-				if (pidRotateOutput >= 0.7) {
-					pidRotateOutput = 0.7;
-				}
-				if (pidRotateOutput <= -0.7) {
-					pidRotateOutput = -0.7;
-				}
-			}
 		}
+
 	}
 
 	class VisionMove extends PIDSubsystem {
@@ -117,34 +115,41 @@ public class Robot extends IterativeRobot {
 			super("VisionMove", p, i, d);
 			this.setSetpoint(visionMoveTargetWidth);
 			getPIDController().setContinuous(false);
+			getPIDController().setOutputRange(0, .7);
 			LiveWindow.addActuator("VisionMove", "pid", getPIDController());
 		}
 
 		@Override
 		protected double returnPIDInput() {
-			if (!isAutonomous() && !isTest()) {
-				return 0;
+
+			switch (visionMode) {
+
+			case MOVE:
+				if (centerWidth > visionMoveTargetWidth) {
+					visionMode = VisionMode.DONE;
+				} else if ((Math.abs(rotateAvgError) > maxRotateErrorDurringMove)) {
+					visionRotate.getPIDController().setOutputRange(-.6, .6);
+					visionMode = VisionMode.ROTATE;
+				}
+				break;
+			default:
+				break;
 			}
-			if (centerWidth > visionMoveTargetWidth) {
-				visionMode = VisionMode.DONE;
-			} else if (rotateAvgError > 60 && centerWidth < visionMoveTargetWidth * .75) {
-				visionMode = VisionMode.ROTATE;
-			}
+			
 			return centerWidth;
 		}
 
 		@Override
 		protected void usePIDOutput(double output) {
-			pidMoveOutput = 0;
-			if (visionMode != VisionMode.MOVE) {
-				return;
-			}
-			pidMoveOutput = output;
-			if (pidMoveOutput >= 0.7) {
-				pidMoveOutput = 0.7;
-			}
-			if (pidMoveOutput <= 0) {
+			switch (visionMode) {
+
+			case MOVE:
+				pidMoveOutput = output;
+				break;
+
+			default:
 				pidMoveOutput = 0;
+				break;
 			}
 		}
 
@@ -166,13 +171,14 @@ public class Robot extends IterativeRobot {
 	}
 
 	public static double rotateKp = 0.011;
-	public static double rotateKi = 1.8E-4;
+	public static double rotateKi = 3.6E-4;
 	public static double rotateKd = .007;
 	public static double moveKp = .03;
-	public static double moveKi = 0;
+	public static double moveKi = .01;
 	public static double moveKd = .037;
-	public static double visionMoveTargetWidth = 120;
+	public static double visionMoveTargetWidth = 60;
 	public static double maxRotateError = 15;
+	public static double maxRotateErrorDurringMove = 40;
 	public static double cameraWidth = 320;
 	public static double cameraHeight = 240;
 	public static double cameraCenterX = cameraWidth / 2.0;
@@ -182,8 +188,8 @@ public class Robot extends IterativeRobot {
 	public static Robot instance;
 	public static final DriveTrain drive = new DriveTrain();
 
-	VisionRotate visionSteering;
-	VisionMove visionDrive;
+	VisionRotate visionRotate;
+	VisionMove visionMove;
 	Command autonomousCommand;
 
 	public double centerY;
@@ -212,8 +218,8 @@ public class Robot extends IterativeRobot {
 		instance = this;
 		oi = new OI();
 		netTable = NetworkTable.getTable("GRIP/myContoursReport");
-		visionSteering = new VisionRotate(rotateKp, rotateKi, rotateKd);
-		visionDrive = new VisionMove(moveKp, moveKi, moveKd);
+		visionRotate = new VisionRotate(rotateKp, rotateKi, rotateKd);
+		visionMove = new VisionMove(moveKp, moveKi, moveKd);
 	}
 
 	public void autonomousInit() {
@@ -246,9 +252,11 @@ public class Robot extends IterativeRobot {
 	public void testInit() {
 		// TODO Auto-generated method stub
 		super.testInit();
-		visionDrive.enable();
-		visionSteering.enable();
+		visionMode = VisionMode.ROTATE;
+		visionMove.enable();
+		visionRotate.enable();
 		period = 0;
+		getCenters();
 	}
 
 	/**
@@ -259,41 +267,61 @@ public class Robot extends IterativeRobot {
 		getCenters();
 		++period;
 
-		if (visionMode != VisionMode.DONE) {
-			System.out.printf("%.2f Mode=%s Rotate=%.1f Move=%.1f targetX=%.1f Width=%.1f\n",
-					System.currentTimeMillis() / 1000., visionMode, pidRotateOutput, pidMoveOutput, targetX,
-					centerWidth);
+		switch (visionMode) {
+		case ROTATE:
+		case MOVE:
 			drive.arcadeDrive(pidMoveOutput, -pidRotateOutput);
+			break;
+			
+		default:
+			drive.arcadeDrive(0, 0);
+			break;
 		}
+
+		System.out.printf("%.2f Mode=%s Rotate=%.1f Move=%.1f targetX=%.1f Width=%.1f rotateAvgErr=%.1f\n",
+				System.currentTimeMillis() / 1000., visionMode, pidRotateOutput, pidMoveOutput, targetX, centerWidth,
+				rotateAvgError);
+	}
+
+	@Override
+	public void disabledPeriodic() {
+		super.disabledPeriodic();
+		visionMode = VisionMode.DISABLED;
 	}
 
 	public boolean getCenters() {
 		double[] tableX = netTable.getNumberArray("centerX", defaultValues);
 		double[] tableY = netTable.getNumberArray("centerY", defaultValues);
 		double[] tableWidth = netTable.getNumberArray("width", defaultValues);
-		int count = Math.min(tableWidth.length, Math.min(tableX.length, tableY.length));
+		double[] tableArea = netTable.getNumberArray("area", defaultValues);
+
+		// NetworkTables aren't updated atomically and therefore the lengths can
+		// differ.
+		int count = Math.min(tableX.length, tableY.length);
+		count = Math.min(count, tableWidth.length);
+		count = Math.min(count, tableArea.length);
 
 		if (count == 0) {
 			return false;
 		}
 
-		Kontours[] countours = new Kontours[count];
+		Kontours[] kontours = new Kontours[count];
 		for (int i = 0; i < count; i++) {
-			double area = tableX[i] * tableY[i];
-			countours[i] = new Kontours(area, tableWidth[i], tableX[i], tableY[i]);
+			double area = tableArea[i];
+			kontours[i] = new Kontours(area, tableWidth[i], tableX[i], tableY[i]);
 		}
 
-		// TODO: Check to see that the two largest areas are approx. equal
-		Arrays.sort(countours);
+		// Between the two with the largest areas, use the rightmost contour.
+		Arrays.sort(kontours);
 		int targetIndex = 0;
-		if (countours.length > 1) {
-			if (countours[0].x < countours[1].x) {
+		if (kontours.length > 1) {
+			if (kontours[0].x < kontours[1].x) {
 				targetIndex = 1;
 			}
 		}
 
-		centerX = countours[targetIndex].x;
-		centerWidth = countours[targetIndex].width;
+		centerX = kontours[targetIndex].x;
+		centerWidth = kontours[targetIndex].width;
 
 		return true;
 	}
