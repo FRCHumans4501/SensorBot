@@ -17,6 +17,9 @@ public class RobotMap {
 	// public static int rangefinderPort = 1;
 	// public static int rangefinderModule = 1;
 
-	public static final int TALON = 0;
-	public static final int TALON2 = 1;
+	public static final int LEFT_TALON = 0;
+	public static final int RIGHT_TALON = 1;
+	public static final int LIFT_TALON = 2;
+	public static final int ENCODER= 0;
+	public static final int ENCODER2=1;
 }

@@ -9,7 +9,9 @@ package org.usfirst.frc.team4501.robot;
 
 import java.util.Arrays;
 
+import org.usfirst.frc.team4501.robot.commands.EncRate;
 import org.usfirst.frc.team4501.robot.subsystems.DriveTrain;
+import org.usfirst.frc.team4501.robot.subsystems.Lift;
 
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.command.Command;
@@ -17,6 +19,7 @@ import edu.wpi.first.wpilibj.command.PIDSubsystem;
 import edu.wpi.first.wpilibj.command.Scheduler;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -61,7 +64,7 @@ public class Robot extends IterativeRobot {
 		public VisionRotate(double p, double i, double d) {
 			super("VisionRotate", p, i, d);
 			getPIDController().setContinuous(false);
-			getPIDController().setOutputRange(-.7, .7);
+			getPIDController().setOutputRange(-maxRotateSpeed, maxRotateSpeed);
 			setSetpoint(cameraCenterX);
 			LiveWindow.addActuator("VisionRotate", "pid", getPIDController());
 		}
@@ -115,7 +118,7 @@ public class Robot extends IterativeRobot {
 			super("VisionMove", p, i, d);
 			this.setSetpoint(visionMoveTargetWidth);
 			getPIDController().setContinuous(false);
-			getPIDController().setOutputRange(0, .7);
+			getPIDController().setOutputRange(0, maxMoveSpeed);
 			LiveWindow.addActuator("VisionMove", "pid", getPIDController());
 		}
 
@@ -128,14 +131,14 @@ public class Robot extends IterativeRobot {
 				if (centerWidth > visionMoveTargetWidth) {
 					visionMode = VisionMode.DONE;
 				} else if ((Math.abs(rotateAvgError) > maxRotateErrorDurringMove)) {
-					visionRotate.getPIDController().setOutputRange(-.6, .6);
+					visionRotate.getPIDController().setOutputRange(-maxAdjustedRotateSpeed, maxAdjustedRotateSpeed);
 					visionMode = VisionMode.ROTATE;
 				}
 				break;
 			default:
 				break;
 			}
-			
+
 			return centerWidth;
 		}
 
@@ -170,12 +173,15 @@ public class Robot extends IterativeRobot {
 		}
 	}
 
-	public static double rotateKp = 0.011;
-	public static double rotateKi = 3.6E-4;
-	public static double rotateKd = .007;
-	public static double moveKp = .03;
-	public static double moveKi = .01;
-	public static double moveKd = .037;
+	public static double rotateKp = 0.4;
+	public static double rotateKi = .2;
+	public static double rotateKd = 1.5;
+	public static double maxRotateSpeed = .6;
+	public static double maxAdjustedRotateSpeed = .4;
+	public static double moveKp = 0.5;
+	public static double moveKi = .02;
+	public static double moveKd = 0.3;
+	public static double maxMoveSpeed = .6;
 	public static double visionMoveTargetWidth = 60;
 	public static double maxRotateError = 15;
 	public static double maxRotateErrorDurringMove = 40;
@@ -183,10 +189,12 @@ public class Robot extends IterativeRobot {
 	public static double cameraHeight = 240;
 	public static double cameraCenterX = cameraWidth / 2.0;
 	public static double cameraCenterY = cameraHeight / 2.0;
+	public static double maxDeltaChange = .5;
 
 	public static OI oi;
 	public static Robot instance;
 	public static final DriveTrain drive = new DriveTrain();
+	public static final Lift lift = new Lift();
 
 	VisionRotate visionRotate;
 	VisionMove visionMove;
@@ -206,6 +214,8 @@ public class Robot extends IterativeRobot {
 	public double[] defaultValues = new double[4];
 
 	public NetworkTable netTable;
+	
+	SmartDashboard dashboard;
 
 	/**
 	 * This function is run when the robot is first started up and should be
@@ -250,12 +260,12 @@ public class Robot extends IterativeRobot {
 
 	@Override
 	public void testInit() {
-		// TODO Auto-generated method stub
 		super.testInit();
 		visionMode = VisionMode.ROTATE;
-		visionMove.enable();
-		visionRotate.enable();
 		period = 0;
+		visionRotate.enable();
+		visionMove.enable();
+		centerWidth = Double.MIN_VALUE;
 		getCenters();
 	}
 
@@ -270,9 +280,9 @@ public class Robot extends IterativeRobot {
 		switch (visionMode) {
 		case ROTATE:
 		case MOVE:
-			drive.arcadeDrive(pidMoveOutput, -pidRotateOutput);
+			drive.arcadeDrive(-pidMoveOutput, pidRotateOutput);
 			break;
-			
+
 		default:
 			drive.arcadeDrive(0, 0);
 			break;
@@ -319,9 +329,19 @@ public class Robot extends IterativeRobot {
 				targetIndex = 1;
 			}
 		}
-
+		double newWidth = kontours[targetIndex].width;
+		if (centerWidth == Double.MIN_VALUE){
+			centerWidth = newWidth;
+		}
+//		double deltaChange = Math.abs((centerWidth-newWidth)/centerWidth);
+//		if (deltaChange > maxDeltaChange) {
+//			System.out.println("Invalid Width: " + newWidth);
+//			return false;
+//		}
+		
 		centerX = kontours[targetIndex].x;
-		centerWidth = kontours[targetIndex].width;
+		centerWidth = newWidth;
+		
 
 		return true;
 	}

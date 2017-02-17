@@ -1,23 +1,19 @@
 package org.usfirst.frc.team4501.robot.commands;
 
-import org.usfirst.frc.team4501.robot.OI;
 import org.usfirst.frc.team4501.robot.Robot;
-import org.usfirst.frc.team4501.robot.subsystems.DriveTrain;
+import org.usfirst.frc.team4501.robot.subsystems.Lift;
 
-import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.command.Command;
 
 /**
  *
  */
-public class Drive extends Command {
-	OI oi;
-	DriveTrain driveTrain;
-	public Drive() {
-		requires(Robot.drive);
-		driveTrain = Robot.drive;
-		oi = Robot.oi;
-	
+public class LowerRobot extends Command {
+	Lift lift;
+
+	public LowerRobot() {
+		requires(Robot.lift);
+		lift = Robot.lift;
 	}
 
 	// Called just before this Command runs the first time
@@ -26,13 +22,12 @@ public class Drive extends Command {
 
 	// Called repeatedly when this Command is scheduled to run
 	protected void execute() {
-		driveTrain.arcadeDrive(oi.getYLeft(), oi.getXLeft());
-		
+		lift.lowerRobotDown();
 	}
 
 	// Make this return true when this Command no longer needs to run execute()
 	protected boolean isFinished() {
-		return false;
+		return true;
 	}
 
 	// Called once after isFinished returns true
